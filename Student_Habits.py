@@ -1,0 +1,73 @@
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler,OrdinalEncoder,OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import RandomizedSearchCV
+from sklearn.metrics import r2_score,mean_squared_error
+from sklearn.linear_model import LassoLarsCV
+from scipy.stats import uniform
+data=pd.read_csv(r"/data_set/student_habits_performance.csv")
+x=data.drop(["student_id","exam_score"],axis=1)
+y=data["exam_score"]
+x_train,x_test,y_train,y_test=train_test_split(x,y,test_size=0.2,random_state=42)
+#
+num_features=["age","study_hours_per_day","social_media_hours","netflix_hours","attendance_percentage","sleep_hours","exercise_frequency",
+              "mental_health_rating"]
+ord_features=["diet_quality","parental_education_level","internet_quality"]
+cate_feature=["gender","part_time_job","extracurricular_participation"]
+
+ordinal_order=[["Poor","Fair","Good"],["High School","Bachelor","Master"],["Poor","Average","Good"]]
+#
+num_preprocess=Pipeline(steps=[
+    ("imputer",SimpleImputer(strategy="median")),
+    ("scaler",StandardScaler())
+])
+ord_preprocess=Pipeline(steps=[
+    ("imputer",SimpleImputer(strategy="most_frequent")),
+    ("encoder",OrdinalEncoder(categories=ordinal_order))
+])
+cate_preprocess=Pipeline(steps=[
+    ("imputer",SimpleImputer(strategy="most_frequent")),
+    ("encoder",OneHotEncoder(sparse_output=False,handle_unknown="ignore"))
+])
+#
+Preprocess=ColumnTransformer(transformers=[
+    ("num_prepro",num_preprocess,num_features),
+    ("ord_prepro",ord_preprocess,ord_features),
+    ("cate_prepro",cate_preprocess,cate_feature)
+])
+param_dist = {
+    'max_n_alphas': [100, 200, 300, 400],
+    'eps': uniform(loc=0.001, scale=0.1)
+}
+#
+random_search = RandomizedSearchCV(
+    LassoLarsCV(),
+    param_distributions=param_dist,
+    n_iter=20,
+    scoring='r2',
+    cv=5,
+    verbose=1,
+    n_jobs=-1,
+    random_state=42
+)
+#
+model = Pipeline(steps=[
+    ("preprocessor", Preprocess),
+    ("random_search", random_search)
+])
+model.fit(x_train, y_train)
+#
+y_prediction=model.predict(x_test)
+#
+mse=mean_squared_error(y_test,y_prediction)
+rmse=np.sqrt(mse)
+#
+print("\n R2 score (test):", r2_score(y_test, y_prediction))
+print(" RMSE (test):", rmse)
+
+
