@@ -1,0 +1,23 @@
+import pandas as pd
+from data_preprocessing import create_preprocessing_pipeline
+from model_training import train_model
+from evaluation import evaluate_model
+
+def main():
+    """Main function to run the student exam score prediction pipeline."""
+    # Load data
+    data = pd.read_csv("data/student_habits_performance.csv")
+    X = data.drop(["student_id", "exam_score"], axis=1)
+    y = data["exam_score"]
+
+    # Create preprocessing pipeline
+    preprocessor = create_preprocessing_pipeline()
+
+    # Train model
+    model = train_model(X, y, preprocessor)
+
+    # Evaluate model
+    evaluate_model(model, X, y)
+
+if __name__ == "__main__":
+    main()
